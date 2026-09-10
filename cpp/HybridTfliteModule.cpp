@@ -1,6 +1,7 @@
 #include "HybridTfliteModule.hpp"
 #include "TfliteHelpers.hpp"
 
+#include <algorithm>
 #include <memory>
 
 #if defined(ANDROID)
@@ -14,10 +15,9 @@
 namespace margelo::nitro::tflite {
 
 /**
- * Return a Hardware accelerated delegate, or throws
- * if the given delegate type is not available.
+ * Return a delegate, or throws if the given delegate type is not available.
  */
-TfLiteDelegate* getDelegate(TensorflowModelDelegate delegateType) {
+std::shared_ptr<TfLiteDelegate> getDelegate(TensorflowModelDelegate delegateType) {
   switch (delegateType) {
     case TensorflowModelDelegate::CORE_ML:
       return getCoreMLDelegate();
@@ -27,14 +27,30 @@ TfLiteDelegate* getDelegate(TensorflowModelDelegate delegateType) {
       return getNNAPIDelegate();
     case TensorflowModelDelegate::ANDROID_GPU:
       return getAndroidGPUDelegate();
+    case TensorflowModelDelegate::XNNPACK:
+      return getXNNPACKDelegate();
   }
   throw std::runtime_error("Unknown Delegate \"" + std::to_string(static_cast<int>(delegateType)) +
                            "\"!");
 }
 
+void validateDelegateConfiguration(const std::vector<TensorflowModelDelegate>& delegates) {
+  const bool usesXNNPACK = std::find(delegates.begin(), delegates.end(),
+                                     TensorflowModelDelegate::XNNPACK) != delegates.end();
+  if (!usesXNNPACK) {
+    return;
+  }
+  if (delegates.size() > 1) {
+    throw std::runtime_error(
+        "TFLite: The XNNPACK delegate cannot be combined with other delegates!");
+  }
+}
+
 std::shared_ptr<HybridTfliteModelSpec>
 HybridTfliteModule::createModel(const std::shared_ptr<ArrayBuffer>& modelData,
                                 const std::vector<TensorflowModelDelegate>& delegates) {
+  validateDelegateConfiguration(delegates);
+
   const std::unique_ptr<TfLiteModel, decltype(&TfLiteModelDelete)> model(
       TfLiteModelCreate(modelData->data(), modelData->size()), TfLiteModelDelete);
   if (model == nullptr) {
@@ -48,11 +64,14 @@ HybridTfliteModule::createModel(const std::shared_ptr<ArrayBuffer>& modelData,
     throw std::runtime_error("TFLite: Failed to create interpreter options!");
   }
 
-  // Add all hardware accelerated delegates (e.g. GPU, NPU, ...)
-  // if any. The default CPU delegate will always be available.
+  // Add all requested delegates. The default CPU kernels stay available for
+  // operators outside delegated partitions.
+  std::vector<std::shared_ptr<TfLiteDelegate>> delegateOwners;
+  delegateOwners.reserve(delegates.size());
   for (const TensorflowModelDelegate& delegateType : delegates) {
-    TfLiteDelegate* delegate = getDelegate(delegateType);
-    TfLiteInterpreterOptionsAddDelegate(options.get(), delegate);
+    std::shared_ptr<TfLiteDelegate> delegate = getDelegate(delegateType);
+    TfLiteInterpreterOptionsAddDelegate(options.get(), delegate.get());
+    delegateOwners.push_back(std::move(delegate));
   }
 
   TfLiteInterpreter* rawInterpreter = TfLiteInterpreterCreate(model.get(), options.get());
@@ -60,7 +79,12 @@ HybridTfliteModule::createModel(const std::shared_ptr<ArrayBuffer>& modelData,
     throw std::runtime_error("Failed to create TFLite interpreter!");
   }
   const std::shared_ptr<TfLiteInterpreter> interpreter(
-      rawInterpreter, [modelData](TfLiteInterpreter* value) { TfLiteInterpreterDelete(value); });
+      rawInterpreter,
+      [modelData, delegateOwners = std::move(delegateOwners)](TfLiteInterpreter* value) {
+        (void)modelData;
+        (void)delegateOwners;
+        TfLiteInterpreterDelete(value);
+      });
 
   // Wrap in HybridTfliteModel — stores shared_ptr<ArrayBuffer> to keep model data bytes alive
   return std::make_shared<HybridTfliteModel>(interpreter, modelData, delegates);

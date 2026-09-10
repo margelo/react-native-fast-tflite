@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TensorDataType.hpp"
+#include <memory>
 #include <string>
 
 #if defined(ANDROID)
@@ -18,9 +19,10 @@ TensorDataType getTensorDataType(TfLiteType dataType);
 size_t getTFLTensorDataTypeSize(TfLiteType dataType);
 int getTensorTotalLength(const TfLiteTensor* tensor);
 
-TfLiteDelegate* getCoreMLDelegate();
-TfLiteDelegate* getMetalDelegate();
-TfLiteDelegate* getNNAPIDelegate();
-TfLiteDelegate* getAndroidGPUDelegate();
+std::shared_ptr<TfLiteDelegate> getCoreMLDelegate();
+std::shared_ptr<TfLiteDelegate> getMetalDelegate();
+std::shared_ptr<TfLiteDelegate> getNNAPIDelegate();
+std::shared_ptr<TfLiteDelegate> getAndroidGPUDelegate();
+std::shared_ptr<TfLiteDelegate> getXNNPACKDelegate();
 
 } // namespace margelo::nitro::tflite

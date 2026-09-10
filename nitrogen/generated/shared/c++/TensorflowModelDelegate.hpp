@@ -33,6 +33,7 @@ namespace margelo::nitro::tflite {
     CORE_ML      SWIFT_NAME(coreMl) = 1,
     NNAPI      SWIFT_NAME(nnapi) = 2,
     ANDROID_GPU      SWIFT_NAME(androidGpu) = 3,
+    XNNPACK      SWIFT_NAME(xnnpack) = 4,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::tflite
@@ -49,6 +50,7 @@ namespace margelo::nitro {
         case hashString("core-ml"): return margelo::nitro::tflite::TensorflowModelDelegate::CORE_ML;
         case hashString("nnapi"): return margelo::nitro::tflite::TensorflowModelDelegate::NNAPI;
         case hashString("android-gpu"): return margelo::nitro::tflite::TensorflowModelDelegate::ANDROID_GPU;
+        case hashString("xnnpack"): return margelo::nitro::tflite::TensorflowModelDelegate::XNNPACK;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum TensorflowModelDelegate - invalid value!");
       }
@@ -59,6 +61,7 @@ namespace margelo::nitro {
         case margelo::nitro::tflite::TensorflowModelDelegate::CORE_ML: return JSIConverter<std::string>::toJSI(runtime, "core-ml");
         case margelo::nitro::tflite::TensorflowModelDelegate::NNAPI: return JSIConverter<std::string>::toJSI(runtime, "nnapi");
         case margelo::nitro::tflite::TensorflowModelDelegate::ANDROID_GPU: return JSIConverter<std::string>::toJSI(runtime, "android-gpu");
+        case margelo::nitro::tflite::TensorflowModelDelegate::XNNPACK: return JSIConverter<std::string>::toJSI(runtime, "xnnpack");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert TensorflowModelDelegate to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -74,6 +77,7 @@ namespace margelo::nitro {
         case hashString("core-ml"):
         case hashString("nnapi"):
         case hashString("android-gpu"):
+        case hashString("xnnpack"):
           return true;
         default:
           return false;

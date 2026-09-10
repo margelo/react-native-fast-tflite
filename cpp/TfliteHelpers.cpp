@@ -1,6 +1,12 @@
 #include "TfliteHelpers.hpp"
 
+#include <algorithm>
+#include <cstdint>
+#include <memory>
+#include <thread>
+
 #if defined(ANDROID)
+#include "vendor/litert/xnnpack_delegate.h"
 #include <tflite/c/c_api.h>
 #include <tflite/delegates/gpu/delegate.h>
 #include <tflite/delegates/nnapi/nnapi_delegate_c_api.h>
@@ -14,6 +20,23 @@
 #endif
 
 namespace margelo::nitro::tflite {
+
+namespace {
+
+  constexpr uint32_t MIN_XNNPACK_THREADS = 1;
+  constexpr uint32_t MAX_XNNPACK_THREADS = 4;
+
+  int32_t getXNNPACKThreadCount() {
+    const uint32_t detectedThreadCount = std::thread::hardware_concurrency();
+    if (detectedThreadCount <= MIN_XNNPACK_THREADS) {
+      return static_cast<int32_t>(MIN_XNNPACK_THREADS);
+    }
+    const uint32_t reservedThreadCount = detectedThreadCount - 1;
+    return static_cast<int32_t>(
+        std::clamp(reservedThreadCount, MIN_XNNPACK_THREADS, MAX_XNNPACK_THREADS));
+  }
+
+} // namespace
 
 // TODO: Remove this, this doesn't seem like a good idea at all.
 typedef float float32_t;
@@ -39,8 +62,9 @@ std::string tfLiteStatusToString(TfLiteStatus status) {
       return "unresolved-ops";
     case kTfLiteCancelled:
       return "cancelled";
+    default:
+      return "unknown";
   }
-  return "unknown";
 }
 
 TensorDataType getTensorDataType(TfLiteType dataType) {
@@ -130,12 +154,15 @@ int getTensorTotalLength(const TfLiteTensor* tensor) {
   return size;
 }
 
-TfLiteDelegate* getCoreMLDelegate() {
+std::shared_ptr<TfLiteDelegate> getCoreMLDelegate() {
 #ifdef __APPLE__
 #if FAST_TFLITE_ENABLE_CORE_ML
   TfLiteCoreMlDelegateOptions delegateOptions;
   TfLiteDelegate* coreMlDelegate = TfLiteCoreMlDelegateCreate(&delegateOptions);
-  return coreMlDelegate;
+  if (coreMlDelegate == nullptr) {
+    throw std::runtime_error("TFLite: Failed to create CoreML delegate!");
+  }
+  return std::shared_ptr<TfLiteDelegate>(coreMlDelegate, TfLiteCoreMlDelegateDelete);
 #else // FAST_TFLITE_ENABLE_CORE_ML
   throw std::runtime_error("The CoreML Delegate (\"core-ml\") is not enabled! "
                            "Set `$EnableCoreMLDelegate` to `true` in your Podfile, and rebuild.");
@@ -146,28 +173,48 @@ TfLiteDelegate* getCoreMLDelegate() {
 #endif
 }
 
-TfLiteDelegate* getMetalDelegate() {
+std::shared_ptr<TfLiteDelegate> getMetalDelegate() {
   throw std::runtime_error("Metal Delegate is not yet supported!");
 }
 
-TfLiteDelegate* getNNAPIDelegate() {
+std::shared_ptr<TfLiteDelegate> getNNAPIDelegate() {
 #ifdef ANDROID
   TfLiteNnapiDelegateOptions delegateOptions = TfLiteNnapiDelegateOptionsDefault();
   TfLiteDelegate* nnapiDelegate = TfLiteNnapiDelegateCreate(&delegateOptions);
-  return nnapiDelegate;
+  if (nnapiDelegate == nullptr) {
+    throw std::runtime_error("TFLite: Failed to create NNAPI delegate!");
+  }
+  return std::shared_ptr<TfLiteDelegate>(nnapiDelegate, TfLiteNnapiDelegateDelete);
 #else // ANDROID
   throw std::runtime_error("The NNAPI Delegate (\"nnapi\") is only supported on Android!");
 #endif
 }
 
-TfLiteDelegate* getAndroidGPUDelegate() {
+std::shared_ptr<TfLiteDelegate> getAndroidGPUDelegate() {
 #ifdef ANDROID
   TfLiteGpuDelegateOptionsV2 delegateOptions = TfLiteGpuDelegateOptionsV2Default();
   TfLiteDelegate* gpuDelegate = TfLiteGpuDelegateV2Create(&delegateOptions);
-  return gpuDelegate;
+  if (gpuDelegate == nullptr) {
+    throw std::runtime_error("TFLite: Failed to create Android GPU delegate!");
+  }
+  return std::shared_ptr<TfLiteDelegate>(gpuDelegate, TfLiteGpuDelegateV2Delete);
 #else // ANDROID
   throw std::runtime_error(
       "The Android GPU Delegate (\"android-gpu\") is only supported on Android!");
+#endif
+}
+
+std::shared_ptr<TfLiteDelegate> getXNNPACKDelegate() {
+#ifdef ANDROID
+  TfLiteXNNPackDelegateOptions delegateOptions = TfLiteXNNPackDelegateOptionsDefault();
+  delegateOptions.num_threads = getXNNPACKThreadCount();
+  TfLiteDelegate* xnnpackDelegate = TfLiteXNNPackDelegateCreate(&delegateOptions);
+  if (xnnpackDelegate == nullptr) {
+    throw std::runtime_error("TFLite: Failed to create XNNPACK delegate!");
+  }
+  return std::shared_ptr<TfLiteDelegate>(xnnpackDelegate, TfLiteXNNPackDelegateDelete);
+#else // ANDROID
+  throw std::runtime_error("The XNNPACK Delegate (\"xnnpack\") is only supported on Android!");
 #endif
 }
 
