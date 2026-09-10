@@ -3,15 +3,18 @@ import {
   loadTensorflowModel,
   type TfliteModel,
   type Tensor,
+  type TensorflowModelDelegate,
 } from 'react-native-fast-tflite';
 import * as jpeg from 'jpeg-js';
-
+import { Platform } from 'react-native';
 
 const MODEL_ASSET = require('../assets/efficientdet.tflite') as number;
 const QUANT_MODEL_ASSET = require('../assets/google-quant.tflite') as number;
 
-
-const CPU_DELEGATES: [] = [];
+const CPU_DELEGATES: TensorflowModelDelegate[] = [];
+const XNNPACK_DELEGATES: TensorflowModelDelegate[] = ['xnnpack'];
+const BENCHMARK_WARMUP_RUNS = 3;
+const BENCHMARK_RUNS = 20;
 
 function bytesPerElement(dataType: string): number {
   switch (dataType) {
@@ -65,7 +68,7 @@ function zeroedInputBuffer(input: Tensor): ArrayBuffer {
 function filledInputBuffer(input: Tensor, byte: number): ArrayBuffer {
   const len = tensorByteLength(input);
   const buf = new ArrayBuffer(len);
-  new Uint8Array(buf).fill(byte & 0xff);
+  new Uint8Array(buf).fill(byte % 256);
   return buf;
 }
 
@@ -175,7 +178,7 @@ async function fetchImageAsRGB(
   targetSize: number,
 ): Promise<Uint8Array> {
   const data = await fetchArrayBuffer(url);
-  const decoded = jpeg.decode(data, {useTArray: true});
+  const decoded = jpeg.decode(data, { useTArray: true });
   return resizeAndExtractRGB(
     decoded.data,
     decoded.width,
@@ -194,6 +197,57 @@ function expectAllFloat32Finite(buf: ArrayBuffer, tensor: Tensor): void {
   for (let i = 0; i < floats.length; i++) {
     expect(Number.isFinite(floats[i])).toBe(true);
   }
+}
+
+type InferenceTiming = {
+  averageMs: number;
+  maxMs: number;
+  minMs: number;
+};
+
+function nowMs(): number {
+  return globalThis.performance.now();
+}
+
+function benchmarkRunSync(
+  model: TfliteModel,
+  input: Tensor,
+  warmupRuns: number,
+  measuredRuns: number,
+): InferenceTiming {
+  for (let i = 0; i < warmupRuns; i++) {
+    model.runSync([filledInputBuffer(input, i)]);
+  }
+
+  let totalMs = 0;
+  let minMs = Number.POSITIVE_INFINITY;
+  let maxMs = 0;
+
+  for (let i = 0; i < measuredRuns; i++) {
+    const inputBuffer = filledInputBuffer(input, i);
+    const startMs = nowMs();
+    model.runSync([inputBuffer]);
+    const elapsedMs = nowMs() - startMs;
+    totalMs += elapsedMs;
+    minMs = Math.min(minMs, elapsedMs);
+    maxMs = Math.max(maxMs, elapsedMs);
+  }
+
+  return {
+    averageMs: totalMs / measuredRuns,
+    maxMs,
+    minMs,
+  };
+}
+
+function requireModel(
+  model: TfliteModel | undefined,
+  name: string,
+): TfliteModel {
+  if (model == null) {
+    throw new Error(`Expected ${name} model to be loaded`);
+  }
+  return model;
 }
 
 describe('react-native-fast-tflite (harness)', () => {
@@ -215,7 +269,7 @@ describe('react-native-fast-tflite (harness)', () => {
         expect(t.name.length).toBeGreaterThan(0);
         expect(t.dataType).not.toBe('none');
         expect(t.shape.length).toBeGreaterThan(0);
-        expect(t.shape.every((d) => d > 0)).toBe(true);
+        expect(t.shape.every(d => d > 0)).toBe(true);
       }
     });
 
@@ -403,9 +457,9 @@ describe('react-native-fast-tflite (harness)', () => {
       const scores = new Uint8Array(outputs[0]!);
 
       // Find top-5 class indices
-      const indexed = Array.from(scores).map((score, i) => ({i, score}));
+      const indexed = Array.from(scores).map((score, i) => ({ i, score }));
       indexed.sort((a, b) => b.score - a.score);
-      const top5Indices = indexed.slice(0, 5).map((x) => x.i);
+      const top5Indices = indexed.slice(0, 5).map(x => x.i);
 
       expect(top5Indices).toContain(GIANT_PANDA_INDEX);
     });
@@ -434,7 +488,9 @@ describe('react-native-fast-tflite (harness)', () => {
       const byteLength = tensorByteLength(input);
 
       // Prime the input tensor with a known image and keep a copy of its scores.
-      const primed = copyOf(model.runSync([filledInputBuffer(input, 0x10)])[0]!);
+      const primed = copyOf(
+        model.runSync([filledInputBuffer(input, 0x10)])[0]!,
+      );
 
       // A visibly different image, but one byte short.
       const wrongSized = new Uint8Array(byteLength - 1).fill(0xf0)
@@ -459,6 +515,98 @@ describe('react-native-fast-tflite (harness)', () => {
       const after = copyOf(model.runSync([correctlySized])[0]!);
       expect(after.byteLength).toBe(tensorByteLength(model.outputs[0]!));
       expect(buffersEqual(after, primed)).toBe(false);
+    });
+  });
+
+  describe('android xnnpack delegate', () => {
+    let cpuModel: TfliteModel | undefined;
+    let xnnpackModel: TfliteModel | undefined;
+
+    beforeAll(async () => {
+      if (Platform.OS !== 'android') {
+        return;
+      }
+      cpuModel = await loadTensorflowModel(QUANT_MODEL_ASSET, CPU_DELEGATES);
+      xnnpackModel = await loadTensorflowModel(
+        QUANT_MODEL_ASSET,
+        XNNPACK_DELEGATES,
+      );
+    });
+
+    it('loads only when explicitly requested on android', () => {
+      if (Platform.OS !== 'android') {
+        return;
+      }
+      expect(requireModel(cpuModel, 'cpu').delegates).toEqual([]);
+      expect(requireModel(xnnpackModel, 'xnnpack').delegates).toEqual([
+        'xnnpack',
+      ]);
+    });
+
+    it('matches the default CPU tensor layout', () => {
+      if (Platform.OS !== 'android') {
+        return;
+      }
+      const cpu = requireModel(cpuModel, 'cpu');
+      const xnnpack = requireModel(xnnpackModel, 'xnnpack');
+      expect(tensorSpecsMatch(cpu.inputs, xnnpack.inputs)).toBe(true);
+      expect(tensorSpecsMatch(cpu.outputs, xnnpack.outputs)).toBe(true);
+    });
+
+    it('runs inference with output sizes matching the default CPU path', () => {
+      if (Platform.OS !== 'android') {
+        return;
+      }
+      const cpu = requireModel(cpuModel, 'cpu');
+      const xnnpack = requireModel(xnnpackModel, 'xnnpack');
+      const input = firstInputTensor(cpu);
+      const inputBuffer = filledInputBuffer(input, 0x80);
+      const cpuOutputs = cpu.runSync([inputBuffer]);
+      const xnnpackOutputs = xnnpack.runSync([inputBuffer]);
+      expect(cpuOutputs).toHaveLength(xnnpackOutputs.length);
+      for (let i = 0; i < cpuOutputs.length; i++) {
+        expect(xnnpackOutputs[i]!.byteLength).toBe(cpuOutputs[i]!.byteLength);
+      }
+    });
+
+    it('rejects xnnpack mixed with hardware delegates', async () => {
+      if (Platform.OS !== 'android') {
+        return;
+      }
+      await expect(
+        loadTensorflowModel(QUANT_MODEL_ASSET, ['xnnpack', 'nnapi']),
+      ).rejects.toThrow(/xnnpack delegate cannot be combined/i);
+    });
+
+    it('compares default CPU and xnnpack runSync timing', () => {
+      if (Platform.OS !== 'android') {
+        return;
+      }
+      const cpu = requireModel(cpuModel, 'cpu');
+      const xnnpack = requireModel(xnnpackModel, 'xnnpack');
+      const input = firstInputTensor(cpu);
+      const cpuTiming = benchmarkRunSync(
+        cpu,
+        input,
+        BENCHMARK_WARMUP_RUNS,
+        BENCHMARK_RUNS,
+      );
+      const xnnpackTiming = benchmarkRunSync(
+        xnnpack,
+        input,
+        BENCHMARK_WARMUP_RUNS,
+        BENCHMARK_RUNS,
+      );
+      console.log(
+        JSON.stringify({
+          benchmark: 'tflite-cpu-vs-xnnpack',
+          runs: BENCHMARK_RUNS,
+          cpu: cpuTiming,
+          xnnpack: xnnpackTiming,
+        }),
+      );
+      expect(cpuTiming.averageMs).toBeGreaterThan(0);
+      expect(xnnpackTiming.averageMs).toBeGreaterThan(0);
     });
   });
 });

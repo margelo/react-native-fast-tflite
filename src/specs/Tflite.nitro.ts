@@ -5,6 +5,7 @@ export type TensorflowModelDelegate =
   | 'core-ml'
   | 'nnapi'
   | 'android-gpu'
+  | 'xnnpack'
 
 export type TensorDataType =
   | 'string'

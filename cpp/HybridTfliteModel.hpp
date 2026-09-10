@@ -17,9 +17,10 @@ namespace margelo::nitro::tflite {
 
 class HybridTfliteModel : public HybridTfliteModelSpec {
 public:
-  explicit HybridTfliteModel(TfLiteInterpreter* interpreter, std::shared_ptr<ArrayBuffer> modelData,
+  explicit HybridTfliteModel(std::shared_ptr<TfLiteInterpreter> interpreter,
+                             std::shared_ptr<ArrayBuffer> modelData,
                              std::vector<TensorflowModelDelegate> delegates);
-  ~HybridTfliteModel();
+  ~HybridTfliteModel() override = default;
 
   // Properties (from HybridTfliteModelSpec)
   std::vector<TensorflowModelDelegate> getDelegates() override;
@@ -39,7 +40,7 @@ private:
   std::shared_ptr<ArrayBuffer> getOutputBufferForTensor(const TfLiteTensor* tensor);
 
 private:
-  TfLiteInterpreter* _interpreter = nullptr;
+  std::shared_ptr<TfLiteInterpreter> _interpreter;
   std::vector<TensorflowModelDelegate> _delegates;
   std::shared_ptr<ArrayBuffer> _modelData;
   std::unordered_map<std::string, std::shared_ptr<ArrayBuffer>> _outputBuffers;
