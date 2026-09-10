@@ -1,6 +1,8 @@
 #include "HybridTfliteModule.hpp"
 #include "TfliteHelpers.hpp"
 
+#include <memory>
+
 #if defined(ANDROID)
 #include <tflite/c/c_api.h>
 #elif defined(__APPLE__)
@@ -33,32 +35,32 @@ TfLiteDelegate* getDelegate(TensorflowModelDelegate delegateType) {
 std::shared_ptr<HybridTfliteModelSpec>
 HybridTfliteModule::createModel(const std::shared_ptr<ArrayBuffer>& modelData,
                                 const std::vector<TensorflowModelDelegate>& delegates) {
-  TfLiteModel* model = TfLiteModelCreate(modelData->data(), modelData->size());
+  const std::unique_ptr<TfLiteModel, decltype(&TfLiteModelDelete)> model(
+      TfLiteModelCreate(modelData->data(), modelData->size()), TfLiteModelDelete);
   if (model == nullptr) {
     throw std::runtime_error("Failed to create TFLite model from data!");
   }
 
   // Configure interpreter via options
-  TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
+  const std::unique_ptr<TfLiteInterpreterOptions, decltype(&TfLiteInterpreterOptionsDelete)>
+      options(TfLiteInterpreterOptionsCreate(), TfLiteInterpreterOptionsDelete);
+  if (options == nullptr) {
+    throw std::runtime_error("TFLite: Failed to create interpreter options!");
+  }
 
   // Add all hardware accelerated delegates (e.g. GPU, NPU, ...)
   // if any. The default CPU delegate will always be available.
   for (const TensorflowModelDelegate& delegateType : delegates) {
     TfLiteDelegate* delegate = getDelegate(delegateType);
-    TfLiteInterpreterOptionsAddDelegate(options, delegate);
+    TfLiteInterpreterOptionsAddDelegate(options.get(), delegate);
   }
 
-  TfLiteInterpreter* interpreter = TfLiteInterpreterCreate(model, options);
-
-  // Options and model object can be deleted immediately after interpreter creation.
-  // (per TFLite C API docs — the model_data buffer must still outlive the interpreter,
-  // which is handled by _modelData shared_ptr in HybridTfliteModel)
-  TfLiteInterpreterOptionsDelete(options);
-  TfLiteModelDelete(model);
-
-  if (interpreter == nullptr) {
+  TfLiteInterpreter* rawInterpreter = TfLiteInterpreterCreate(model.get(), options.get());
+  if (rawInterpreter == nullptr) {
     throw std::runtime_error("Failed to create TFLite interpreter!");
   }
+  const std::shared_ptr<TfLiteInterpreter> interpreter(
+      rawInterpreter, [modelData](TfLiteInterpreter* value) { TfLiteInterpreterDelete(value); });
 
   // Wrap in HybridTfliteModel — stores shared_ptr<ArrayBuffer> to keep model data bytes alive
   return std::make_shared<HybridTfliteModel>(interpreter, modelData, delegates);

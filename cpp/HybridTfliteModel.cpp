@@ -15,12 +15,12 @@
 
 namespace margelo::nitro::tflite {
 
-HybridTfliteModel::HybridTfliteModel(TfLiteInterpreter* interpreter,
+HybridTfliteModel::HybridTfliteModel(std::shared_ptr<TfLiteInterpreter> interpreter,
                                      std::shared_ptr<ArrayBuffer> modelData,
                                      std::vector<TensorflowModelDelegate> delegates)
-    : HybridObject(TAG), _interpreter(interpreter), _delegates(std::move(delegates)),
+    : HybridObject(TAG), _interpreter(std::move(interpreter)), _delegates(std::move(delegates)),
       _modelData(modelData) {
-  TfLiteStatus status = TfLiteInterpreterAllocateTensors(_interpreter);
+  TfLiteStatus status = TfLiteInterpreterAllocateTensors(_interpreter.get());
   if (status != kTfLiteOk) {
     throw std::runtime_error(
         "TFLite: Failed to allocate memory for input/output tensors! Status: " +
@@ -28,24 +28,16 @@ HybridTfliteModel::HybridTfliteModel(TfLiteInterpreter* interpreter,
   }
 }
 
-HybridTfliteModel::~HybridTfliteModel() {
-  if (_interpreter != nullptr) {
-    TfLiteInterpreterDelete(_interpreter);
-    _interpreter = nullptr;
-  }
-  // _modelData (shared_ptr<ArrayBuffer>) is automatically freed
-}
-
 std::vector<TensorflowModelDelegate> HybridTfliteModel::getDelegates() {
   return _delegates;
 }
 
 std::vector<Tensor> HybridTfliteModel::getInputs() {
-  int count = TfLiteInterpreterGetInputTensorCount(_interpreter);
+  int count = TfLiteInterpreterGetInputTensorCount(_interpreter.get());
   std::vector<Tensor> tensors;
   tensors.reserve(count);
   for (int32_t i = 0; i < count; i++) {
-    TfLiteTensor* tensor = TfLiteInterpreterGetInputTensor(_interpreter, i);
+    TfLiteTensor* tensor = TfLiteInterpreterGetInputTensor(_interpreter.get(), i);
     if (tensor == nullptr) {
       throw std::runtime_error("TFLite: Failed to get input tensor " + std::to_string(i) + "!");
     }
@@ -63,11 +55,11 @@ std::vector<Tensor> HybridTfliteModel::getInputs() {
 }
 
 std::vector<Tensor> HybridTfliteModel::getOutputs() {
-  int count = TfLiteInterpreterGetOutputTensorCount(_interpreter);
+  int count = TfLiteInterpreterGetOutputTensorCount(_interpreter.get());
   std::vector<Tensor> tensors;
   tensors.reserve(count);
   for (int32_t i = 0; i < count; i++) {
-    const TfLiteTensor* tensor = TfLiteInterpreterGetOutputTensor(_interpreter, i);
+    const TfLiteTensor* tensor = TfLiteInterpreterGetOutputTensor(_interpreter.get(), i);
     if (tensor == nullptr) {
       throw std::runtime_error("TFLite: Failed to get output tensor " + std::to_string(i) + "!");
     }
@@ -85,7 +77,7 @@ std::vector<Tensor> HybridTfliteModel::getOutputs() {
 }
 
 void HybridTfliteModel::copyInputBuffers(const std::vector<std::shared_ptr<ArrayBuffer>>& input) {
-  size_t inputCount = TfLiteInterpreterGetInputTensorCount(_interpreter);
+  size_t inputCount = TfLiteInterpreterGetInputTensorCount(_interpreter.get());
   if (input.size() != inputCount) [[unlikely]] {
     throw std::runtime_error("TFLite: Input array size (" + std::to_string(input.size()) +
                              ") does not match input tensor count (" + std::to_string(inputCount) +
@@ -93,7 +85,7 @@ void HybridTfliteModel::copyInputBuffers(const std::vector<std::shared_ptr<Array
   }
 
   for (int32_t i = 0; i < inputCount; i++) {
-    TfLiteTensor* tensor = TfLiteInterpreterGetInputTensor(_interpreter, i);
+    TfLiteTensor* tensor = TfLiteInterpreterGetInputTensor(_interpreter.get(), i);
     const std::shared_ptr<ArrayBuffer>& buffer = input[i];
     TfLiteStatus status = TfLiteTensorCopyFromBuffer(tensor, buffer->data(), buffer->size());
     if (status != kTfLiteOk) [[unlikely]] {
@@ -123,12 +115,12 @@ HybridTfliteModel::getOutputBufferForTensor(const TfLiteTensor* tensor) {
 }
 
 std::vector<std::shared_ptr<ArrayBuffer>> HybridTfliteModel::copyOutputBuffers() {
-  int outputCount = TfLiteInterpreterGetOutputTensorCount(_interpreter);
+  int outputCount = TfLiteInterpreterGetOutputTensorCount(_interpreter.get());
   std::vector<std::shared_ptr<ArrayBuffer>> results;
   results.reserve(outputCount);
 
   for (int32_t i = 0; i < outputCount; i++) {
-    const TfLiteTensor* tensor = TfLiteInterpreterGetOutputTensor(_interpreter, i);
+    const TfLiteTensor* tensor = TfLiteInterpreterGetOutputTensor(_interpreter.get(), i);
     std::shared_ptr<ArrayBuffer> outputBuffer = getOutputBufferForTensor(tensor);
 
     std::string name = TfLiteTensorName(tensor);
@@ -147,7 +139,7 @@ std::vector<std::shared_ptr<ArrayBuffer>> HybridTfliteModel::copyOutputBuffers()
 }
 
 void HybridTfliteModel::invoke() {
-  TfLiteStatus status = TfLiteInterpreterInvoke(_interpreter);
+  TfLiteStatus status = TfLiteInterpreterInvoke(_interpreter.get());
   if (status != kTfLiteOk) {
     throw std::runtime_error("TFLite: Failed to run TFLite Model! Status: " +
                              tfLiteStatusToString(status));
