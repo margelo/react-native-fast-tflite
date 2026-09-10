@@ -5843,10 +5843,10 @@ react-native-harness@^1.0.0:
     "@react-native-harness/runtime" "1.0.0"
     tslib "^2.3.0"
 
-react-native-nitro-modules@^0.35.2:
-  version "0.35.2"
-  resolved "https://registry.yarnpkg.com/react-native-nitro-modules/-/react-native-nitro-modules-0.35.2.tgz#75fbcd42a73d93540c0069d42098d9dc6c12ea7e"
-  integrity sha512-97cZcCh3ZAuWAfutel2Q3qLfc45XXh7F9Ei5tEjahP0kV3q8hQelwLIulKXmjN+f0JI5Zf/wCsfwwdVWYU2tKA==
+react-native-nitro-modules@^0.37.1:
+  version "0.37.1"
+  resolved "https://registry.yarnpkg.com/react-native-nitro-modules/-/react-native-nitro-modules-0.37.1.tgz#368bda3038ebe796b219d98e0a364f9166e2cc7c"
+  integrity sha512-KpW6EQVQ/bfegpCGxN9Be+ndvsfj56t4IESEvCASu9gWpJa/NDfHpIeIwCOvZQ3eXmLEj6YD4wCLqcC1FJPr2w==
 
 react-native-safe-area-context@^5.5.2:
   version "5.7.0"

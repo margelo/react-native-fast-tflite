@@ -2335,10 +2335,10 @@
   resolved "https://registry.yarnpkg.com/@tootallnate/quickjs-emscripten/-/quickjs-emscripten-0.23.0.tgz#db4ecfd499a9765ab24002c3b696d02e6d32a12c"
   integrity sha512-C5Mc6rdnsaJDjO3UpGW/CQTHtCKaYlScZTly4JIu97Jxo/odCiH0ITnDXSJPTOrEKk/ycSZ0AOgTmkDtkOsvIA==
 
-"@ts-morph/common@~0.28.1":
-  version "0.28.1"
-  resolved "https://registry.yarnpkg.com/@ts-morph/common/-/common-0.28.1.tgz#10ec52182d5c310832b669af7784a34fc3da3ca1"
-  integrity sha512-W74iWf7ILp1ZKNYXY5qbddNaml7e9Sedv5lvU1V8lftlitkc9Pq1A+jlH23ltDgWYeZFFEqGCD1Ies9hqu3O+g==
+"@ts-morph/common@~0.29.0":
+  version "0.29.0"
+  resolved "https://registry.yarnpkg.com/@ts-morph/common/-/common-0.29.0.tgz#bb1ed737f309c8270bb2e92207066343c1302ae2"
+  integrity sha512-35oUmphHbJvQ/+UTwFNme/t2p3FoKiGJ5auTjjpNTop2dyREspirjMy82PLSC1pnDJ8ah1GU98hwpVt64YXQsg==
   dependencies:
     minimatch "^10.0.1"
     path-browserify "^1.0.1"
@@ -6836,16 +6836,16 @@ new-github-release-url@2.0.0:
   dependencies:
     type-fest "^2.5.1"
 
-nitrogen@^0.35.2:
-  version "0.35.2"
-  resolved "https://registry.yarnpkg.com/nitrogen/-/nitrogen-0.35.2.tgz#fe05e4e5bc8e1a6542e920a11484dc8d032bd624"
-  integrity sha512-oSlD1uoJPhTr4Zlf3IkX68zXBmpfuOzeds4LJBK7P7WUd1zE4fqAtYCHPeoKw2qLUByGV1FJTrr7Ye84dP/ujQ==
+nitrogen@^0.37.1:
+  version "0.37.1"
+  resolved "https://registry.yarnpkg.com/nitrogen/-/nitrogen-0.37.1.tgz#b683aa59a6794a6b90651d696b8baea901246cea"
+  integrity sha512-RMK1n8xV7B38JorfLCFexgPEDp7/4CnM/AR0R3UfikufXo8qB8TecgtY+sW0xjOjZJYwW5bJJI/kyZjusYk4JA==
   dependencies:
     chalk "^5.3.0"
-    react-native-nitro-modules "^0.35.2"
-    ts-morph "^27.0.0"
+    react-native-nitro-modules "^0.37.1"
+    ts-morph "^28.0.0"
     yargs "^18.0.0"
-    zod "^4.0.5"
+    zod "^4.4.3"
 
 nocache@^3.0.1:
   version "3.0.4"
@@ -7592,10 +7592,10 @@ react-native-builder-bob@^0.23.2:
     which "^2.0.2"
     yargs "^17.5.1"
 
-react-native-nitro-modules@*, react-native-nitro-modules@^0.35.2:
-  version "0.35.2"
-  resolved "https://registry.yarnpkg.com/react-native-nitro-modules/-/react-native-nitro-modules-0.35.2.tgz#75fbcd42a73d93540c0069d42098d9dc6c12ea7e"
-  integrity sha512-97cZcCh3ZAuWAfutel2Q3qLfc45XXh7F9Ei5tEjahP0kV3q8hQelwLIulKXmjN+f0JI5Zf/wCsfwwdVWYU2tKA==
+react-native-nitro-modules@^0.37.1:
+  version "0.37.1"
+  resolved "https://registry.yarnpkg.com/react-native-nitro-modules/-/react-native-nitro-modules-0.37.1.tgz#368bda3038ebe796b219d98e0a364f9166e2cc7c"
+  integrity sha512-KpW6EQVQ/bfegpCGxN9Be+ndvsfj56t4IESEvCASu9gWpJa/NDfHpIeIwCOvZQ3eXmLEj6YD4wCLqcC1FJPr2w==
 
 react-native@*, react-native@0.73.3:
   version "0.73.3"
@@ -8655,12 +8655,12 @@ tr46@~0.0.3:
   resolved "https://registry.yarnpkg.com/tr46/-/tr46-0.0.3.tgz#8184fd347dac9cdc185992f3a6622e14b9d9ab6a"
   integrity sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==
 
-ts-morph@^27.0.0:
-  version "27.0.2"
-  resolved "https://registry.yarnpkg.com/ts-morph/-/ts-morph-27.0.2.tgz#7b2fcce6822eeca3942fa6c601f159d5920b1422"
-  integrity sha512-fhUhgeljcrdZ+9DZND1De1029PrE+cMkIP7ooqkLRTrRLTqcki2AstsyJm0vRNbTbVCNJ0idGlbBrfqc7/nA8w==
+ts-morph@^28.0.0:
+  version "28.0.0"
+  resolved "https://registry.yarnpkg.com/ts-morph/-/ts-morph-28.0.0.tgz#cd3ebdf89742a32b06ea7327df6445364ee26631"
+  integrity sha512-Wp3tnZ2bzwxyTZMtgWVzXDfm7lB1Drz+y9DmmYH/L702PQhPyVrp3pkou3yIz4qjS14GY9kcpmLiOOMvl8oG1g==
   dependencies:
-    "@ts-morph/common" "~0.28.1"
+    "@ts-morph/common" "~0.29.0"
     code-block-writer "^13.0.3"
 
 tslib@^1.8.1:
@@ -9288,7 +9288,7 @@ yocto-queue@^1.0.0:
   resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-1.0.0.tgz#7f816433fb2cbc511ec8bf7d263c3b58a1a3c251"
   integrity sha512-9bnSc/HEW2uRy67wc+T8UwauLuPJVn28jb+GtJY16iiKWyvmYJRXVT4UamsAEGQfPohgr2q4Tq0sQbQlxTfi1g==
 
-zod@^4.0.5:
-  version "4.3.6"
-  resolved "https://registry.yarnpkg.com/zod/-/zod-4.3.6.tgz#89c56e0aa7d2b05107d894412227087885ab112a"
-  integrity sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==
+zod@^4.4.3:
+  version "4.6.1"
+  resolved "https://registry.yarnpkg.com/zod/-/zod-4.6.1.tgz#08a340def8104c8381a7796af3806e4633025390"
+  integrity sha512-341aRWQsve0rvronKNTqZpjmzdbUDlFuzHaI/XLg/Ej82qffDJRRfBTCuv7+9q/rMjB6LSLyEBnW4InJeMtt/Q==
