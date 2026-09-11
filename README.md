@@ -151,6 +151,20 @@ return <Camera device="back" isActive={true} outputs={[frameOutput]} {...otherPr
 > [!NOTE]
 > Unlike v4, VisionCamera v5 no longer requires boxing the model with `NitroModules.box()`. Since v5 is built on Nitro Modules and uses [react-native-worklets](https://docs.swmansion.com/react-native-worklets/), worklets can access HybridObjects like the TFLite model directly.
 
+### Using Android XNNPACK CPU Delegate
+
+Pass `['xnnpack']` to opt into the Android XNNPACK CPU delegate:
+
+```ts
+const model = await loadTensorflowModel(require('assets/my-model.tflite'), [
+  'xnnpack',
+])
+```
+
+Passing `[]` keeps the standard TFLite CPU path. XNNPACK is Android-only, uses an internally selected thread count capped for mobile devices, and cannot currently be combined with `android-gpu` or `nnapi`.
+
+Use XNNPACK when CPU inference is the right fit for your model or when GPU/NNAPI is unavailable or slower on your target devices. Benchmark your model on real devices, especially if the app also runs camera, image preprocessing, or other CPU-heavy work.
+
 ### Using GPU Delegates
 
 GPU Delegates offer faster, GPU-accelerated computation. There are multiple delegates available:
