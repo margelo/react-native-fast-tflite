@@ -66,6 +66,7 @@
     "@expo/config-plugins": "^7.8.4",
     "@jamesacarr/eslint-formatter-github-actions": "^0.2.0",
     "@react-native-community/eslint-config": "^3.0.2",
+    "@react-native/babel-preset": "0.73.20",
     "@release-it/conventional-changelog": "^8.0.1",
     "@types/jest": "^29.5.11",
     "@types/react": "~18.2.48",
@@ -99,6 +100,10 @@
     "modulePathIgnorePatterns": [
       "<rootDir>/example/node_modules",
       "<rootDir>/lib/"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/example/"
     ]
   },
   "release-it": {
@@ -125,11 +130,6 @@
     "tabWidth": 2,
     "trailingComma": "es5",
     "useTabs": false
-  },
-  "babel": {
-    "presets": [
-      "module:metro-react-native-babel-preset"
-    ]
   },
   "react-native-builder-bob": {
     "source": "src",
