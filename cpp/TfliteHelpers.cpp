@@ -147,7 +147,9 @@ TfLiteDelegate* getCoreMLDelegate() {
 }
 
 TfLiteDelegate* getMetalDelegate() {
-  throw std::runtime_error("Metal Delegate is not yet supported!");
+  throw std::runtime_error("The Metal Delegate (\"metal\") is not implemented! "
+                           "Use \"core-ml\" on Apple platforms, or \"android-gpu\"/\"nnapi\" on "
+                           "Android instead.");
 }
 
 TfLiteDelegate* getNNAPIDelegate() {

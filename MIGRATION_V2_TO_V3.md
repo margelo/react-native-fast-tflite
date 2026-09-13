@@ -36,8 +36,22 @@ The `delegate` parameter has been renamed to `delegates` and now accepts an **ar
 ```
 
 ```diff
-- const model = useTensorflowModel(source, 'metal')
-+ const model = useTensorflowModel(source, ['metal'])
+- const model = useTensorflowModel(source, 'core-ml')
++ const model = useTensorflowModel(source, ['core-ml'])
+```
+
+### The `'metal'` delegate is not implemented
+
+`'metal'` is still part of the `TensorflowModelDelegate` union, but it has no
+implementation - creating a model with it throws
+`The Metal Delegate ("metal") is not implemented!`
+(see [`cpp/TfliteHelpers.cpp`](./cpp/TfliteHelpers.cpp), `getMetalDelegate()`).
+It is documented as deprecated on the `TensorflowModelDelegate` type. On Apple
+platforms, use `'core-ml'` instead:
+
+```diff
+- const model = useTensorflowModel(source, ['metal'])
++ const model = useTensorflowModel(source, ['core-ml'])
 ```
 
 ### The `'default'` delegate is removed

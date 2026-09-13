@@ -22,7 +22,7 @@ const tfliteModule =
  * * If you are passing in a `{ url: ... }`, make sure the URL points directly to a `.tflite` model. This can either be a web URL (`http://..`/`https://..`), or a local file (`file://..`).
  *
  * @param source The `.tflite` model in form of either a `require(..)` statement or a `{ url: string }`.
- * @param delegates The delegates to use for computations. Uses the standard CPU delegate per default. The `core-ml` or `metal` delegates are GPU-accelerated, but don't work on every model.
+ * @param delegates The delegates to use for computations. Pass an empty array (`[]`) to use the standard CPU delegate. The `core-ml` (iOS), `android-gpu` and `nnapi` (Android) delegates are hardware-accelerated, but don't work on every model.
  * @returns The loaded Model.
  */
 export async function loadTensorflowModel(

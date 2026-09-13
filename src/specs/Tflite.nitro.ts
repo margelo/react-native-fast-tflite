@@ -1,5 +1,14 @@
 import type { HybridObject } from 'react-native-nitro-modules'
 
+/**
+ * A hardware-accelerating delegate to run the TFLite model with.
+ *
+ * - `'core-ml'`: CoreML (Apple platforms). Requires `$EnableCoreMLDelegate`.
+ * - `'nnapi'`: NNAPI (Android)
+ * - `'android-gpu'`: GPU (Android)
+ * - `'metal'`: **deprecated, not implemented** - creating a model with this
+ *   delegate always throws. Use `'core-ml'` on Apple platforms instead.
+ */
 export type TensorflowModelDelegate =
   | 'metal'
   | 'core-ml'

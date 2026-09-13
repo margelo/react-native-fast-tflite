@@ -15,7 +15,6 @@ if linkage != nil
 end
 
 $EnableCoreMLDelegate=true
-$EnableMetalDelegate=true
 
 target 'TfliteExample' do
   config = use_native_modules!

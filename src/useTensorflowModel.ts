@@ -24,7 +24,7 @@ export type TensorflowPlugin =
  * * If you are passing in a `{ url: ... }`, make sure the URL points directly to a `.tflite` model. This can either be a web URL (`http://..`/`https://..`), or a local file (`file://..`).
  *
  * @param source The `.tflite` model in form of either a `require(..)` statement or a `{ url: string }`.
- * @param delegates The delegates to use for computations. Uses the standard CPU delegate per default. The `core-ml` or `metal` delegates are GPU-accelerated, but don't work on every model.
+ * @param delegates The delegates to use for computations. Pass an empty array (`[]`) to use the standard CPU delegate. The `core-ml` (iOS), `android-gpu` and `nnapi` (Android) delegates are hardware-accelerated, but don't work on every model.
  * @returns The state of the Model.
  */
 export function useTensorflowModel(
@@ -50,7 +50,7 @@ export function useTensorflowModel(
     }
     load()
     // JSON.stringify compares delegates by value so inline array literals
-    // (e.g. ['core-ml', 'default']) don't cause the effect to re-run every render
+    // (e.g. ['core-ml']) don't cause the effect to re-run every render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, JSON.stringify(delegates)])
 
