@@ -28,11 +28,28 @@ HybridTfliteModel::HybridTfliteModel(std::shared_ptr<TfLiteInterpreter> interpre
   }
 }
 
+void HybridTfliteModel::dispose() {
+  // The lock waits out an in-flight inference on another thread - freeing the
+  // interpreter under a running TfLiteInterpreterInvoke would be a native crash.
+  std::lock_guard<std::mutex> lock(_lifecycleMutex);
+  if (_interpreter == nullptr) {
+    return; // already disposed
+  }
+  // We hold the only reference to the interpreter, so this runs its deleter
+  // now: TfLiteInterpreterDelete, then the delegates. The model bytes are
+  // released once nobody else (e.g. JS) references them either.
+  _interpreter.reset();
+  _modelData.reset();
+  _outputBuffers.clear();
+}
+
 std::vector<TensorflowModelDelegate> HybridTfliteModel::getDelegates() {
   return _delegates;
 }
 
 std::vector<Tensor> HybridTfliteModel::getInputs() {
+  std::lock_guard<std::mutex> lock(_lifecycleMutex);
+  throwIfDisposed();
   int count = TfLiteInterpreterGetInputTensorCount(_interpreter.get());
   std::vector<Tensor> tensors;
   tensors.reserve(count);
@@ -55,6 +72,8 @@ std::vector<Tensor> HybridTfliteModel::getInputs() {
 }
 
 std::vector<Tensor> HybridTfliteModel::getOutputs() {
+  std::lock_guard<std::mutex> lock(_lifecycleMutex);
+  throwIfDisposed();
   int count = TfLiteInterpreterGetOutputTensorCount(_interpreter.get());
   std::vector<Tensor> tensors;
   tensors.reserve(count);
@@ -148,6 +167,10 @@ void HybridTfliteModel::invoke() {
 
 std::vector<std::shared_ptr<ArrayBuffer>>
 HybridTfliteModel::runSync(const std::vector<std::shared_ptr<ArrayBuffer>>& input) {
+  // Held for the whole inference so dispose() can never free the interpreter
+  // mid-invoke. The disposed-throw is a catchable JS error on any runtime.
+  std::lock_guard<std::mutex> lock(_lifecycleMutex);
+  throwIfDisposed();
   copyInputBuffers(input);
   invoke();
   return copyOutputBuffers();
@@ -155,12 +178,20 @@ HybridTfliteModel::runSync(const std::vector<std::shared_ptr<ArrayBuffer>>& inpu
 
 std::shared_ptr<Promise<std::vector<std::shared_ptr<ArrayBuffer>>>>
 HybridTfliteModel::run(const std::vector<std::shared_ptr<ArrayBuffer>>& input) {
-  // Copy input buffers on caller (JS) thread first — input ArrayBuffers are
-  // non-owning JS buffers that may be GC'd if we access them async.
-  copyInputBuffers(input);
+  {
+    // Copy input buffers on caller (JS) thread first — input ArrayBuffers are
+    // non-owning JS buffers that may be GC'd if we access them async.
+    std::lock_guard<std::mutex> lock(_lifecycleMutex);
+    throwIfDisposed();
+    copyInputBuffers(input);
+  }
   std::shared_ptr<HybridTfliteModel> sharedThis = shared_cast<HybridTfliteModel>();
   return Promise<std::vector<std::shared_ptr<ArrayBuffer>>>::async(
       [sharedThis]() -> std::vector<std::shared_ptr<ArrayBuffer>> {
+        // Re-acquire on the async thread: dispose() may have landed between
+        // the input copy above and this lambda running.
+        std::lock_guard<std::mutex> lock(sharedThis->_lifecycleMutex);
+        sharedThis->throwIfDisposed();
         sharedThis->invoke();
         return sharedThis->copyOutputBuffers();
       });
