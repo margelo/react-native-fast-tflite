@@ -133,7 +133,7 @@ int getTensorTotalLength(const TfLiteTensor* tensor) {
 TfLiteDelegate* getCoreMLDelegate() {
 #ifdef __APPLE__
 #if FAST_TFLITE_ENABLE_CORE_ML
-  TfLiteCoreMlDelegateOptions delegateOptions;
+  TfLiteCoreMlDelegateOptions delegateOptions = {};
   TfLiteDelegate* coreMlDelegate = TfLiteCoreMlDelegateCreate(&delegateOptions);
   return coreMlDelegate;
 #else // FAST_TFLITE_ENABLE_CORE_ML
