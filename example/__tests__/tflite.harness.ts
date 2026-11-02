@@ -8,7 +8,8 @@ import * as jpeg from 'jpeg-js';
 
 
 const MODEL_ASSET = require('../assets/efficientdet.tflite') as number;
-const QUANT_MODEL_ASSET = require('../assets/google-quant.tflite') as number;
+// Bundled natively (Android assets / iOS app bundle) to cover `asset:/` URLs.
+const QUANT_MODEL_ASSET = { url: 'asset:/google-quant.tflite' };
 
 
 const CPU_DELEGATES: [] = [];
