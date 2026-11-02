@@ -18,7 +18,12 @@ class HybridAssetLoader : HybridAssetLoaderSpec() {
       // In release builds `require(..)` resolves to a scheme-less `res/raw` resource name,
       // which `java.net.URL` cannot parse. Load those from resources; everything with a
       // scheme (`http(s)://` dev server, `file://` local file) goes through URL.
-      val bytes = if (path.contains("://")) loadFromUrl(path) else loadFromRawResource(path)
+      val bytes =
+        when {
+          path.startsWith("asset:/") -> loadFromAsset(path)
+          path.contains("://") -> loadFromUrl(path)
+          else -> loadFromRawResource(path)
+        }
       Log.i(TAG, "Successfully loaded TFLite model from \"$path\"! (${bytes.size} bytes)")
       return@async ArrayBuffer.copy(bytes)
     }
@@ -27,6 +32,15 @@ class HybridAssetLoader : HybridAssetLoaderSpec() {
   private fun loadFromUrl(path: String): ByteArray {
     Log.i(TAG, "Loading \"$path\" from URL...")
     return URL(path).readBytes()
+  }
+
+  private fun loadFromAsset(path: String): ByteArray {
+    Log.i(TAG, "Loading \"$path\" from assets...")
+    val context =
+      NitroModules.applicationContext
+        ?: throw Error("Cannot load TFLite model - No Android Context available!")
+    // `asset:/name` and `asset:///name` both refer to `name` in the APK's assets folder.
+    return context.assets.open(path.removePrefix("asset:/").trimStart('/')).use { it.readBytes() }
   }
 
   @SuppressLint("DiscouragedApi")
