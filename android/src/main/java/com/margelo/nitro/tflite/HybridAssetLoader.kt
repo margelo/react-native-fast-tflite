@@ -1,6 +1,7 @@
 package com.margelo.nitro.tflite
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import android.util.Log
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
@@ -9,7 +10,6 @@ import com.margelo.nitro.core.ArrayBuffer
 import com.margelo.nitro.core.Promise
 import java.io.File
 import java.io.RandomAccessFile
-import java.net.URI
 import java.net.URL
 import java.nio.channels.FileChannel
 
@@ -20,7 +20,7 @@ class HybridAssetLoader : HybridAssetLoaderSpec() {
     return Promise.async {
       Log.i(TAG, "Loading TFLite model from \"$path\"...")
       if (path.startsWith("file://")) {
-        return@async mapFile(File(URI(path)))
+        return@async mapFile(File(Uri.decode(path.removePrefix("file://"))))
       }
       // In release builds `require(..)` resolves to a scheme-less `res/raw` resource name,
       // which `java.net.URL` cannot parse. Load those from resources; everything with a
