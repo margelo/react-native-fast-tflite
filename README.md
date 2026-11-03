@@ -76,6 +76,8 @@ loadTensorflowModel(
 
 Loading a Model is asynchronous since buffers need to be allocated. Make sure to handle errors when loading.
 
+For large models, save the file to the device and load it with a `file://` URL. Local files are memory-mapped instead of being read into memory, while remote URLs and, on Android, `require(..)` assets are read into memory in full.
+
 ### Input and Output data
 
 TensorFlow uses _tensors_ as input and output. Since TensorFlow Lite is optimized for fixed-size byte buffers, you are responsible for interpreting the raw data yourself.
