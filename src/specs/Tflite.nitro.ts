@@ -1,5 +1,18 @@
 import type { HybridObject } from 'react-native-nitro-modules'
 
+/**
+ * Delegates for accelerating TensorFlow Lite computations.
+ *
+ * - `metal`: Apple Metal GPU acceleration. Not yet supported.
+ * - `core-ml`: Apple Core ML acceleration. Requires enabling the Core ML
+ *   delegate in the Podfile (`$EnableCoreMLDelegate = true`) or Expo config
+ *   plugin (`enableCoreMLDelegate: true`) and rebuilding the app.
+ * - `nnapi`: Android hardware acceleration through the Neural Networks API.
+ * - `android-gpu`: Android GPU acceleration.
+ *
+ * Hardware-accelerated delegates do not support every model operation.
+ * Pass an empty delegate array (`[]`) to use the standard CPU execution path.
+ */
 export type TensorflowModelDelegate =
   | 'metal'
   | 'core-ml'
