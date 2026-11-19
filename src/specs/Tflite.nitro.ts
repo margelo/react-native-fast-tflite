@@ -58,6 +58,23 @@ export interface TfliteModule
     modelData: ArrayBuffer,
     delegates: TensorflowModelDelegate[]
   ): TfliteModel
+  /**
+   * Same as {@linkcode createModel}, but builds the interpreter
+   * on a background thread instead of blocking the calling one.
+   *
+   * Building the interpreter can take seconds: hardware
+   * delegates such as `core-ml` compile the model while it is
+   * created, which would otherwise freeze the JS thread.
+   *
+   * {@linkcode modelData} is read on the calling thread, and
+   * copied there first unless native code owns it (as
+   * `AssetLoader.loadAsset(...)`'s result does), since a JS-owned
+   * buffer may only be read on the JS thread.
+   */
+  createModelAsync(
+    modelData: ArrayBuffer,
+    delegates: TensorflowModelDelegate[]
+  ): Promise<TfliteModel>
 }
 
 export interface AssetLoader

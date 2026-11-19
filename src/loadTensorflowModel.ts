@@ -43,5 +43,5 @@ export async function loadTensorflowModel(
     )
   }
   const data = await assetLoader.loadAsset(uri)
-  return tfliteModule.createModel(data, delegates)
+  return tfliteModule.createModelAsync(data, delegates)
 }

@@ -23,6 +23,7 @@ namespace margelo::nitro::tflite { enum class TensorflowModelDelegate; }
 #include <NitroModules/ArrayBuffer.hpp>
 #include "TensorflowModelDelegate.hpp"
 #include <vector>
+#include <NitroModules/Promise.hpp>
 
 namespace margelo::nitro::tflite {
 
@@ -56,6 +57,7 @@ namespace margelo::nitro::tflite {
     public:
       // Methods
       virtual std::shared_ptr<HybridTfliteModelSpec> createModel(const std::shared_ptr<ArrayBuffer>& modelData, const std::vector<TensorflowModelDelegate>& delegates) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<HybridTfliteModelSpec>>> createModelAsync(const std::shared_ptr<ArrayBuffer>& modelData, const std::vector<TensorflowModelDelegate>& delegates) = 0;
 
     protected:
       // Hybrid Setup

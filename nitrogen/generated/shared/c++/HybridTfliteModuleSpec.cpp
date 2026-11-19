@@ -15,6 +15,7 @@ namespace margelo::nitro::tflite {
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridMethod("createModel", &HybridTfliteModuleSpec::createModel);
+      prototype.registerHybridMethod("createModelAsync", &HybridTfliteModuleSpec::createModelAsync);
     });
   }
 
