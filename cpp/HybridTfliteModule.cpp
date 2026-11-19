@@ -1,7 +1,12 @@
 #include "HybridTfliteModule.hpp"
 #include "TfliteHelpers.hpp"
 
+#include <NitroModules/Promise.hpp>
 #include <memory>
+
+#if defined(__APPLE__)
+#include "AutoreleasePool.hpp"
+#endif
 
 #if defined(ANDROID)
 #include <tflite/c/c_api.h>
@@ -32,11 +37,16 @@ TfLiteDelegate* getDelegate(TensorflowModelDelegate delegateType) {
                            "\"!");
 }
 
-std::shared_ptr<HybridTfliteModelSpec>
-HybridTfliteModule::createModel(const std::shared_ptr<ArrayBuffer>& modelData,
-                                const std::vector<TensorflowModelDelegate>& delegates) {
+/**
+ * Builds the interpreter from the `size` bytes at `bytes`, which `modelData` owns and keeps alive
+ * for the interpreter's lifetime. It never calls into `modelData` itself, so it may run on any
+ * thread.
+ */
+static std::shared_ptr<HybridTfliteModelSpec>
+createModelFromBytes(const std::shared_ptr<ArrayBuffer>& modelData, const uint8_t* bytes,
+                     size_t size, const std::vector<TensorflowModelDelegate>& delegates) {
   const std::unique_ptr<TfLiteModel, decltype(&TfLiteModelDelete)> model(
-      TfLiteModelCreate(modelData->data(), modelData->size()), TfLiteModelDelete);
+      TfLiteModelCreate(bytes, size), TfLiteModelDelete);
   if (model == nullptr) {
     throw std::runtime_error("Failed to create TFLite model from data!");
   }
@@ -64,6 +74,39 @@ HybridTfliteModule::createModel(const std::shared_ptr<ArrayBuffer>& modelData,
 
   // Wrap in HybridTfliteModel — stores shared_ptr<ArrayBuffer> to keep model data bytes alive
   return std::make_shared<HybridTfliteModel>(interpreter, modelData, delegates);
+}
+
+std::shared_ptr<HybridTfliteModelSpec>
+HybridTfliteModule::createModel(const std::shared_ptr<ArrayBuffer>& modelData,
+                                const std::vector<TensorflowModelDelegate>& delegates) {
+  return createModelFromBytes(modelData, modelData->data(), modelData->size(), delegates);
+}
+
+std::shared_ptr<Promise<std::shared_ptr<HybridTfliteModelSpec>>>
+HybridTfliteModule::createModelAsync(const std::shared_ptr<ArrayBuffer>& modelData,
+                                     const std::vector<TensorflowModelDelegate>& delegates) {
+  // The worker thread must not call into `modelData`: a JS-owned ArrayBuffer may only be read on
+  // the JS thread, and on Android a natively owned one wraps a `java.nio.ByteBuffer`, whose address
+  // can only be read on a thread attached to the JVM. So resolve the bytes here, on the calling
+  // thread, after copying a buffer that does not own its memory. TFLite reads them for the
+  // interpreter's whole lifetime, and `ownedData` keeps them alive for as long.
+  std::shared_ptr<ArrayBuffer> ownedData =
+      modelData->isOwner() ? modelData : ArrayBuffer::copy(modelData);
+  const uint8_t* bytes = ownedData->data();
+  size_t size = ownedData->size();
+  return Promise<std::shared_ptr<HybridTfliteModelSpec>>::async(
+      [ownedData, bytes, size, delegates]() -> std::shared_ptr<HybridTfliteModelSpec> {
+#if defined(__APPLE__)
+        // A thread-pool thread never drains an autorelease pool of its own, so whatever
+        // Core ML / Metal autorelease while the interpreter is built would otherwise live forever.
+        std::shared_ptr<HybridTfliteModelSpec> model;
+        runInAutoreleasePool(
+            [&] { model = createModelFromBytes(ownedData, bytes, size, delegates); });
+        return model;
+#else
+        return createModelFromBytes(ownedData, bytes, size, delegates);
+#endif
+      });
 }
 
 } // namespace margelo::nitro::tflite
