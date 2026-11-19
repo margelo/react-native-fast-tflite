@@ -133,8 +133,16 @@ int getTensorTotalLength(const TfLiteTensor* tensor) {
 TfLiteDelegate* getCoreMLDelegate() {
 #ifdef __APPLE__
 #if FAST_TFLITE_ENABLE_CORE_ML
-  TfLiteCoreMlDelegateOptions delegateOptions;
+  // Value-initialize: a default-initialized struct leaves `enabled_devices`,
+  // `coreml_version` and the partition limits as whatever was on the stack.
+  TfLiteCoreMlDelegateOptions delegateOptions{};
   TfLiteDelegate* coreMlDelegate = TfLiteCoreMlDelegateCreate(&delegateOptions);
+  if (coreMlDelegate == nullptr) {
+    // With the default `enabled_devices`, TFLite only creates the delegate on devices with a
+    // Neural Engine, which the iOS Simulator does not have.
+    throw std::runtime_error("The CoreML Delegate (\"core-ml\") is not available on this device: "
+                             "TFLite only creates it on devices with a Neural Engine.");
+  }
   return coreMlDelegate;
 #else // FAST_TFLITE_ENABLE_CORE_ML
   throw std::runtime_error("The CoreML Delegate (\"core-ml\") is not enabled! "
